@@ -22,11 +22,6 @@ npm run dev      # → http://localhost:5174
 
 Login calls the real backend (`POST /auth/login`), which returns a JWT. That token is stored in `localStorage` and sent as `Authorization: Bearer <token>` on every request (see `src/api/index.js`). There's no hardcoded fallback password — if the backend rejects the credentials, login fails. If a token expires or is rejected mid-session, the API client automatically clears it and redirects to `/login`.
 
-Default seeded credentials (change these after first login, via **Settings**):
-```
-username: admin
-password: lumng2025
-```
 
 ## Data
 
