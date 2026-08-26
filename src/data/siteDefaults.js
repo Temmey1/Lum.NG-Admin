@@ -19,7 +19,7 @@ export const formatPrice = (n) =>
 // saved from the admin panel, the real value from the API takes over.
 export const DEFAULT_SITE_CONTENT = {
   hero: {
-    eyebrow: 'Unisex Fabric Store · Ilorin, Kwara',
+    eyebrow: 'Unisex Fabric Store · Ilorin, Kwara & Ibadan, Oyo',
     titleLine1: 'Look Classy',
     titleLine2: 'To Your Taste',
     subtitle: 'Lace · Ankara · Senator · Guinea\nBonnets · Alhaji Caps · Children\'s Wear',
@@ -35,7 +35,7 @@ export const DEFAULT_SITE_CONTENT = {
     eyebrow: 'About LUM NG',
     title: 'Look Classy',
     titleItalic: 'To Your Taste',
-    body1: 'LUM NG is a premium unisex fabric store founded by Oluwapelumi Adeboye, based in Ilorin, Kwara State. We deal in Lace, Ankara, Senator materials, Guinea Brocade, Embroidered Alhaji caps, Bonnets (all types), and Baby/Children\'s wears.',
+    body1: 'LUM NG is a premium unisex fabric store founded by Oluwapelumi Adeboye, with flagship locations in Ilorin, Kwara State and Ibadan, Oyo State. We deal in Lace, Ankara, Senator materials, Guinea Brocade, Embroidered Alhaji caps, Bonnets (all types), and Baby/Children\'s wears.',
     body2: "Whether you're dressing for a wedding, traditional ceremony, or everyday elegance — LUM NG has everything you need to look classy to your taste.",
     stat1Label: 'Product Types', stat1Value: '8+',
     stat2Label: 'Happy Customers', stat2Value: '500+',
@@ -46,16 +46,17 @@ export const DEFAULT_SITE_CONTENT = {
   marquee: ['Lace','Ankara','Senator Material','Guinea Brocade','Bonnets','Alhaji Caps',"Children's Wear",'Adire'],
   testimonials: [
     { stars: 5, text: "The Ankara I ordered was beyond stunning — rich colors and impeccable quality. LUM NG is my go-to for every owambe!", author: 'Adaeze O., Ilorin' },
-    { stars: 5, text: "Ordered Guinea Brocade for my daughter's introduction ceremony. Top quality and prompt delivery. Very satisfied!", author: 'Mrs. Folake B., Kwara' },
+    { stars: 5, text: "Ordered Guinea Brocade for my daughter's introduction ceremony. Top quality and prompt delivery. Very satisfied!", author: 'Mrs. Folake B., Ibadan' },
+    { stars: 5, text: "Picked up a gorgeous lace set from the Ibadan store — the quality is unreal and staff were so helpful!", author: 'Aisha K., Oyo' },
     { stars: 5, text: "The Senator material and lace from LUM NG are world class. I've been a tailor for years and this is my most trusted source.", author: 'Emeka T., Abuja' },
     { stars: 5, text: "Got the Alhaji cap and Senator material for my dad — he loved it! Fast delivery, genuine quality. Highly recommended!", author: 'Chioma N., Port Harcourt' },
   ],
   contact: {
     phone: '+2349074112695',
     email: 'lumngfabrics@gmail.com',
-    address: 'Ilorin, Kwara State',
+    address: 'Ilorin, Kwara State & Ibadan, Oyo State',
     hours: 'Mon–Sat 8am–7pm',
-    storeAddress: 'Ilorin, Kwara State.',
+    storeAddress: 'Ilorin, Kwara State & Ibadan, Oyo State.',
   },
   cta: {
     title: 'Ready to Look Classy?',
@@ -64,11 +65,11 @@ export const DEFAULT_SITE_CONTENT = {
     btnSecondary: 'Contact Us',
   },
   footer: {
-    tagline: 'Premium unisex fabric store — Ilorin, Kwara. Look classy to your taste.',
+    tagline: 'Premium unisex fabric store — Ilorin, Kwara State & Ibadan, Oyo State. Look classy to your taste.',
     copyright: '© 2026 LUM NG. All rights reserved.',
   },
   seo: {
-    siteTitle: 'LUM NG — Unisex Fabric Store | Ilorin, Kwara',
-    metaDescription: 'LUM NG — premium unisex fabric store in Ilorin, Kwara. Lace, Ankara, Senator, Guinea, Bonnets, Alhaji Caps, Children\'s Wear. Look classy to your taste.',
+    siteTitle: 'LUM NG — Unisex Fabric Store | Ilorin, Kwara & Ibadan, Oyo',
+    metaDescription: 'LUM NG — premium unisex fabric store in Ilorin, Kwara State and Ibadan, Oyo State. Lace, Ankara, Senator, Guinea, Bonnets, Alhaji Caps, Children\'s Wear. Look classy to your taste.',
   },
 };

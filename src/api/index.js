@@ -1,11 +1,21 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
+
+/** Product/fabric-card images are stored as backend-relative paths
+ * (e.g. "/uploads/xyz.jpg"). This resolves them to a full URL against
+ * whichever backend this admin app is pointed at. Already-absolute URLs
+ * (http/https) pass through unchanged. */
+export function resolveImageUrl(url) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 // Attach the real JWT (issued by POST /auth/login) to every request
 api.interceptors.request.use((config) => {
@@ -72,4 +82,17 @@ export const ordersApi = {
 export const settingsApi = {
   get: () => api.get("/settings"),
   update: (data) => api.put("/settings", data),
+};
+
+export const uploadApi = {
+  // Generic standalone upload (POST /upload) — returns { url }. Used when we
+  // want an image URL up front (e.g. before a product exists yet), rather
+  // than the product-scoped POST /products/:id/image variant.
+  file: (file) => {
+    const form = new FormData();
+    form.append("image", file);
+    return api.post("/upload", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };

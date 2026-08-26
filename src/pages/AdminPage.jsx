@@ -6,10 +6,13 @@ import {
   ExternalLink, Edit, Trash2, Check, X, Package, Users,
   DollarSign, Globe, Type, Image, MessageSquare, Phone,
   Megaphone, AlignLeft, Search, ChevronDown, ChevronUp,
-  RotateCcw, Eye, Save
+  RotateCcw, Eye, Save, Menu, PanelLeftClose, PanelLeftOpen, Copy, Link2
 } from 'lucide-react';
-import { productsApi, ordersApi, settingsApi, authApi } from '../api/index';
+import { productsApi, ordersApi, settingsApi, authApi, resolveImageUrl } from '../api/index';
 import { formatPrice, CATEGORIES, DEFAULT_SITE_CONTENT } from '../data/siteDefaults';
+import ThemeToggle from '../components/ui/ThemeToggle';
+import ImageUpload from '../components/ui/ImageUpload';
+import ProductThumb from '../components/ui/ProductThumb';
 
 const PRODUCT_CATEGORIES = CATEGORIES.filter(c => c.value !== 'all');
 
@@ -23,6 +26,7 @@ const STOREFRONT_URL = import.meta.env.VITE_STOREFRONT_URL || 'http://localhost:
 function normalizeOrder(o) {
   return {
     ref: o.ref,
+    publicToken: o.publicToken,
     customer: {
       name: o.custName, email: o.custEmail, phone: o.custPhone,
       address: o.custAddress, state: o.custState, landmark: o.custLandmark,
@@ -60,7 +64,7 @@ const NAV = [
 const BLANK_PRODUCT = {
   name: '', category: 'ankara', description: '', price: '', unit: 'per yard',
   bulkPrice: '', bulkMin: '', badge: '', minOrder: 1, tags: '',
-  pattern: 'linear-gradient(135deg,#1a1a1a,#333)', inStock: true, featured: false,
+  pattern: 'linear-gradient(135deg,#1a1a1a,#333)', imageUrl: null, inStock: true, featured: false,
 };
 
 /* ─── Reusable form widgets ─────────────────────────────── */
@@ -77,13 +81,13 @@ function Field({ label, children }) {
 }
 
 function FieldRow({ children }) {
-  return <div className="grid grid-cols-2 gap-4">{children}</div>;
+  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>;
 }
 
 function SectionCard({ title, children, onReset }) {
   return (
-    <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-7 mb-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-7 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
         <h2 className="font-semibold text-[var(--text)] text-base">{title}</h2>
         {onReset && (
           <button onClick={onReset}
@@ -141,6 +145,16 @@ export default function AdminPage() {
   const [viewOrder, setViewOrder] = useState(null);
   const [newCreds, setNewCreds] = useState({ user: '', pass: '' });
   const [websiteOpen, setWebsiteOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('lumng_admin_sidebar_collapsed') === '1');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed(c => {
+      const next = !c;
+      localStorage.setItem('lumng_admin_sidebar_collapsed', next ? '1' : '0');
+      return next;
+    });
+  };
 
   // Local copies of site content sections for editing
   const [heroForm,        setHeroForm]        = useState(siteContent.hero);
@@ -323,86 +337,139 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[var(--bg)] flex font-[Inter]">
 
+      {/* ── Mobile topbar (hidden on lg+) ── */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[var(--bg-2)] border-b border-[var(--border)] flex items-center justify-between px-4 z-30">
+        <button onClick={() => setMobileSidebarOpen(true)} className="text-[var(--text-muted)] hover:text-[var(--text)] p-1" aria-label="Open menu">
+          <Menu size={22}/>
+        </button>
+        <div className="flex items-center gap-2">
+          <img src="/logo.jpeg" alt="LUM NG" className="w-6 h-6 rounded-full object-cover border border-[var(--gold-dim)]" />
+          <span className="font-[Playfair_Display] text-sm font-black tracking-widest text-[var(--text)]">LUM NG</span>
+        </div>
+        <ThemeToggle />
+      </div>
+
+      {/* ── Mobile backdrop ── */}
+      <AnimatePresence>
+        {mobileSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setMobileSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/60 z-40"
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Sidebar ── */}
-      <aside className="w-[260px] bg-[var(--bg-2)] border-r border-[var(--border)] flex flex-col fixed top-0 left-0 bottom-0 z-10 overflow-y-auto">
-        <div className="px-6 py-7 border-b border-[var(--border)]">
+      <aside className={`
+        bg-[var(--bg-2)] border-r border-[var(--border)] flex flex-col fixed top-0 left-0 bottom-0 z-50 overflow-y-auto
+        transition-transform duration-300 lg:translate-x-0
+        ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        ${sidebarCollapsed ? 'lg:w-[76px]' : 'lg:w-[260px]'} w-[260px]
+      `}>
+        <div className={`px-6 py-7 border-b border-[var(--border)] flex items-center justify-between ${sidebarCollapsed ? 'lg:px-4' : ''}`}>
           <div className="font-[Playfair_Display] text-xl font-black tracking-widest"
             style={{ background: 'linear-gradient(135deg,var(--text),var(--gold-light))', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
             <div className="flex items-center gap-2.5">
-              <img src="/logo.jpeg" alt="LUM NG" className="w-8 h-8 rounded-full object-cover border border-[var(--gold-dim)]" />
-              <span>LUM NG</span>
+              <img src="/logo.jpeg" alt="LUM NG" className="w-8 h-8 rounded-full object-cover border border-[var(--gold-dim)] flex-shrink-0" />
+              {!sidebarCollapsed && <span className="lg:inline">LUM NG</span>}
+              <span className="lg:hidden">LUM NG</span>
             </div>
           </div>
-          <div className="text-[10px] tracking-[0.15em] uppercase text-[var(--gold)] mt-1">Admin Panel</div>
+          <button onClick={() => setMobileSidebarOpen(false)} className="lg:hidden text-[var(--text-muted)] hover:text-[var(--text)]">
+            <X size={20}/>
+          </button>
         </div>
+        {!sidebarCollapsed && <div className="text-[10px] tracking-[0.15em] uppercase text-[var(--gold)] px-6 -mt-5 pb-2 hidden lg:block">Admin Panel</div>}
 
         <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
           {/* Main group */}
-          <div className="text-[10px] tracking-[0.15em] uppercase text-[var(--text-ghost)] px-3.5 mb-2 mt-1">Main</div>
+          {!sidebarCollapsed && <div className="text-[10px] tracking-[0.15em] uppercase text-[var(--text-ghost)] px-3.5 mb-2 mt-1 hidden lg:block">Main</div>}
           {NAV.filter(n => n.group === 'main').map(({ id, label, Icon }) => (
-            <button key={id}
-              onClick={() => { setPage(id); if (id === 'add') { setForm(BLANK_PRODUCT); setEditId(null); } }}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] text-left transition-all border w-full ${
+            <button key={id} title={sidebarCollapsed ? label : undefined}
+              onClick={() => { setPage(id); if (id === 'add') { setForm(BLANK_PRODUCT); setEditId(null); } setMobileSidebarOpen(false); }}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] text-left transition-all border w-full ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''} ${
                 page === id
                   ? 'bg-[var(--gold-glow)] border-[var(--gold-dim)] text-[var(--gold-light)]'
                   : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--input-bg)] hover:text-[var(--text)]'
               }`}>
-              <Icon size={15}/> {label}
+              <Icon size={15} className="flex-shrink-0"/> <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{label}</span>
             </button>
           ))}
 
           {/* Website group */}
           <button
             onClick={() => setWebsiteOpen(o => !o)}
-            className="flex items-center justify-between px-3.5 py-2.5 mt-3 mb-1 text-[10px] tracking-[0.15em] uppercase text-[var(--text-ghost)] hover:text-[var(--text-muted)] transition-colors w-full">
+            className={`flex items-center justify-between px-3.5 py-2.5 mt-3 mb-1 text-[10px] tracking-[0.15em] uppercase text-[var(--text-ghost)] hover:text-[var(--text-muted)] transition-colors w-full ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
             <span>Website Content</span>
             {websiteOpen ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
           </button>
-          {websiteOpen && NAV.filter(n => n.group === 'website').map(({ id, label, Icon }) => (
-            <button key={id} onClick={() => setPage(id)}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] text-left transition-all border w-full ${
+          {(websiteOpen || sidebarCollapsed) && NAV.filter(n => n.group === 'website').map(({ id, label, Icon }) => (
+            <button key={id} title={sidebarCollapsed ? label : undefined}
+              onClick={() => { setPage(id); setMobileSidebarOpen(false); }}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] text-left transition-all border w-full ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''} ${
                 page === id
                   ? 'bg-[var(--gold-glow)] border-[var(--gold-dim)] text-[var(--gold-light)]'
                   : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--input-bg)] hover:text-[var(--text)]'
               }`}>
-              <Icon size={15}/> {label}
+              <Icon size={15} className="flex-shrink-0"/> <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{label}</span>
             </button>
           ))}
 
           {/* Config */}
-          <div className="text-[10px] tracking-[0.15em] uppercase text-[var(--text-ghost)] px-3.5 mb-2 mt-4">Config</div>
-          <button onClick={() => setPage('settings')}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] text-left transition-all border w-full ${
+          {!sidebarCollapsed && <div className="text-[10px] tracking-[0.15em] uppercase text-[var(--text-ghost)] px-3.5 mb-2 mt-4 hidden lg:block">Config</div>}
+          <button title={sidebarCollapsed ? 'Settings' : undefined} onClick={() => { setPage('settings'); setMobileSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] text-left transition-all border w-full ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''} ${
               page === 'settings'
                 ? 'bg-[var(--gold-glow)] border-[var(--gold-dim)] text-[var(--gold-light)]'
                 : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--input-bg)] hover:text-[var(--text)]'
             }`}>
-            <Settings size={15}/> Settings
+            <Settings size={15} className="flex-shrink-0"/> <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Settings</span>
           </button>
 
-          <a href={STOREFRONT_URL} target="_blank" rel="noreferrer"
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] border border-transparent text-[var(--text-ghost)] hover:text-[var(--text)] hover:bg-[var(--input-bg)] transition-all mt-1">
-            <ExternalLink size={15}/> View Site
+          <a href={STOREFRONT_URL} target="_blank" rel="noreferrer" title={sidebarCollapsed ? 'View Site' : undefined}
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] border border-transparent text-[var(--text-ghost)] hover:text-[var(--text)] hover:bg-[var(--input-bg)] transition-all mt-1 ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+            <ExternalLink size={15} className="flex-shrink-0"/> <span className={sidebarCollapsed ? 'lg:hidden' : ''}>View Site</span>
           </a>
-          <a href={`${STOREFRONT_URL}/shop`} target="_blank" rel="noreferrer"
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] border border-transparent text-[var(--text-ghost)] hover:text-[var(--text)] hover:bg-[var(--input-bg)] transition-all">
-            <Eye size={15}/> Preview Shop
+          <a href={`${STOREFRONT_URL}/shop`} target="_blank" rel="noreferrer" title={sidebarCollapsed ? 'Preview Shop' : undefined}
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded text-[13px] border border-transparent text-[var(--text-ghost)] hover:text-[var(--text)] hover:bg-[var(--input-bg)] transition-all ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+            <Eye size={15} className="flex-shrink-0"/> <span className={sidebarCollapsed ? 'lg:hidden' : ''}>Preview Shop</span>
           </a>
         </nav>
 
-        <div className="px-6 py-5 border-t border-[var(--border)]">
-          <div className="text-[12px] text-[var(--text-muted)] mb-3">
+        {/* Theme toggle — desktop only (mobile has it in the topbar) */}
+        <div className={`px-6 py-3 border-t border-[var(--border)] hidden lg:flex items-center ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}>
+          {!sidebarCollapsed && <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Theme</span>}
+          <ThemeToggle />
+        </div>
+
+        <div className={`px-6 py-5 border-t border-[var(--border)] ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
+          {!sidebarCollapsed && (
+            <div className="text-[12px] text-[var(--text-muted)] mb-3 hidden lg:block">
+              <strong className="text-[var(--text-dim)] block">{localStorage.getItem('lumng_admin_username') || 'Admin'}</strong>Logged in
+            </div>
+          )}
+          <div className="text-[12px] text-[var(--text-muted)] mb-3 lg:hidden">
             <strong className="text-[var(--text-dim)] block">{localStorage.getItem('lumng_admin_username') || 'Admin'}</strong>Logged in
           </div>
-          <button onClick={handleLogout}
-            className="w-full border border-[var(--border)] text-[var(--text-muted)] text-[12px] uppercase tracking-wider py-2 rounded hover:border-red-400/30 hover:text-red-400/80 transition-all flex items-center justify-center gap-2">
-            <LogOut size={13}/> Sign Out
+          <button onClick={handleLogout} title={sidebarCollapsed ? 'Sign Out' : undefined}
+            className={`w-full border border-[var(--border)] text-[var(--text-muted)] text-[12px] uppercase tracking-wider py-2 rounded hover:border-red-400/30 hover:text-red-400/80 transition-all flex items-center justify-center gap-2`}>
+            <LogOut size={13}/> {!sidebarCollapsed && <span className="lg:inline hidden">Sign Out</span>} <span className="lg:hidden">Sign Out</span>
           </button>
         </div>
+
+        {/* Desktop collapse toggle */}
+        <button
+          onClick={toggleSidebarCollapsed}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden lg:flex absolute top-8 -right-3 w-6 h-6 rounded-full bg-[var(--bg-2)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--gold)] hover:border-[var(--gold-dim)] items-center justify-center transition-all"
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={12}/> : <PanelLeftClose size={12}/>}
+        </button>
       </aside>
 
       {/* ── Main content ── */}
-      <main className="ml-[260px] flex-1 p-10 min-h-screen">
+      <main className={`flex-1 p-5 lg:p-10 min-h-screen pt-20 lg:pt-10 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[76px]' : 'lg:ml-[260px]'}`}>
 
         {/* ── DASHBOARD ── */}
         {page === 'dashboard' && (
@@ -437,7 +504,8 @@ export default function AdminPage() {
                   <span className="font-semibold text-[var(--text)]">Recent Orders</span>
                   <button onClick={() => setPage('orders')} className="text-[12px] text-[var(--text-muted)] hover:text-[var(--gold-light)] transition-colors">View All →</button>
                 </div>
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px]">
                   <thead>
                     <tr>{['Ref','Customer','Total','Status'].map(h =>
                       <th key={h} className="text-left text-[10px] tracking-wider uppercase text-[var(--gold)] px-4 py-3 border-b border-[var(--border)]">{h}</th>
@@ -457,6 +525,7 @@ export default function AdminPage() {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
 
               {/* Quick actions */}
@@ -492,7 +561,8 @@ export default function AdminPage() {
               </button>
             </div>
             <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl overflow-hidden">
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px]">
                 <thead>
                   <tr>{['Preview','Name','Category','Price','Bulk','Status','Actions'].map(h =>
                     <th key={h} className="text-left text-[10px] tracking-wider uppercase text-[var(--gold)] px-4 py-3 border-b border-[var(--border)]">{h}</th>
@@ -501,7 +571,7 @@ export default function AdminPage() {
                 <tbody>
                   {products.map(p => (
                     <tr key={p.id} className="hover:bg-[var(--input-bg)] border-b border-[var(--border)] last:border-0">
-                      <td className="px-4 py-3"><div className="w-9 h-9 rounded-md" style={{ background: p.pattern }}/></td>
+                      <td className="px-4 py-3"><ProductThumb product={p} className="w-9 h-9 rounded-md"/></td>
                       <td className="px-4 py-3">
                         <span className="text-sm font-semibold text-[var(--text)]">{p.name}</span>
                         {p.badge && <span className="ml-2 bg-[var(--gold)] text-[var(--bg)] text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-sm">{p.badge}</span>}
@@ -532,6 +602,7 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </motion.div>
         )}
@@ -542,8 +613,13 @@ export default function AdminPage() {
             <h1 className="font-[Playfair_Display] text-3xl font-bold text-[var(--text)] mb-8">
               {editId ? 'Edit Product' : 'Add Product'}
             </h1>
-            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-8">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-8">
               <div className="grid grid-cols-1 gap-5 max-w-2xl">
+                <ImageUpload
+                  value={form.imageUrl}
+                  onChange={(url) => setForm(f => ({ ...f, imageUrl: url }))}
+                  label="Product Image (shown on the storefront if set)"
+                />
                 <FieldRow>
                   <Field label="Product Name *"><input value={form.name} onChange={setF('name')} placeholder="e.g. Royal Ankara" className={inputCls}/></Field>
                   <Field label="Category *">
@@ -570,9 +646,9 @@ export default function AdminPage() {
                   <Field label="Min Order Qty"><input type="number" value={form.minOrder} onChange={setF('minOrder')} placeholder="1" className={inputCls}/></Field>
                 </FieldRow>
                 <Field label="Tags (comma separated)"><input value={form.tags} onChange={setF('tags')} placeholder="traditional, colorful, wax print" className={inputCls}/></Field>
-                <Field label="CSS Gradient Pattern">
+                <Field label="Fallback Gradient (used only if no image is uploaded above)">
                   <textarea value={form.pattern} onChange={setF('pattern')} rows={2} placeholder="linear-gradient(135deg, #color1, #color2)" className={inputCls + ' resize-y font-mono text-[12px]'}/>
-                  <div className="h-16 rounded-lg border border-[var(--border)] mt-2 transition-all" style={{ background: form.pattern }}/>
+                  {!form.imageUrl && <div className="h-16 rounded-lg border border-[var(--border)] mt-2 transition-all" style={{ background: form.pattern }}/>}
                 </Field>
                 <FieldRow>
                   <Field label="In Stock">
@@ -616,7 +692,8 @@ export default function AdminPage() {
               </button>
             </div>
             <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl overflow-hidden">
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[820px]">
                 <thead>
                   <tr>{['Ref','Customer','Phone','Delivery','Total','Date','Status','View'].map(h =>
                     <th key={h} className="text-left text-[10px] tracking-wider uppercase text-[var(--gold)] px-4 py-3 border-b border-[var(--border)]">{h}</th>
@@ -653,6 +730,7 @@ export default function AdminPage() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </motion.div>
         )}
@@ -813,7 +891,7 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {products.filter(p => p.featured).map(p => (
                   <div key={p.id} className="flex items-center gap-3 bg-[var(--bg-3)] border border-[var(--border)] rounded-lg p-3">
-                    <div className="w-10 h-10 rounded-md flex-shrink-0" style={{ background: p.pattern }}/>
+                    <ProductThumb product={p} className="w-10 h-10 rounded-md"/>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-[var(--text)] truncate">{p.name}</div>
                       <div className="text-[11px] text-[var(--text-muted)]">{formatPrice(p.price)} · {p.unit}</div>
@@ -984,9 +1062,9 @@ export default function AdminPage() {
         {page === 'settings' && (
           <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }}>
             <h1 className="font-[Playfair_Display] text-3xl font-bold text-[var(--text)] mb-8">Settings</h1>
-            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-8 max-w-2xl mb-6">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-8 max-w-2xl mb-6">
               <h2 className="font-semibold text-[var(--text)] mb-5">Admin Credentials</h2>
-              <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                 <Field label="New Username">
                   <input value={newCreds.user} onChange={e => setNewCreds(c=>({...c,user:e.target.value}))} placeholder="New username" className={inputCls}/>
                 </Field>
@@ -1006,7 +1084,7 @@ export default function AdminPage() {
                 Update Credentials
               </button>
             </div>
-            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-8 max-w-2xl">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-8 max-w-2xl">
               <h2 className="font-semibold text-[var(--text)] mb-2">Reset Website Content</h2>
               <p className="text-sm text-[var(--text-muted)] mb-5">Resets all website text/copy to the original defaults. Products and orders are not affected.</p>
               <button onClick={async () => { if (confirm('Reset all website content to defaults?')) { await resetSiteContent(); showToast('✓ Website content reset'); } }}
@@ -1023,15 +1101,29 @@ export default function AdminPage() {
       <AnimatePresence>
         {viewOrder && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            className="fixed inset-0 bg-[var(--overlay)] z-50 flex items-center justify-center p-5"
+            className="fixed inset-0 bg-[var(--overlay)] z-50 flex items-center justify-center p-3 sm:p-5"
             onClick={() => setViewOrder(null)}>
             <motion.div initial={{ scale:0.95 }} animate={{ scale:1 }} exit={{ scale:0.95 }}
-              className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-8 w-full max-w-[520px] max-h-[90vh] overflow-y-auto relative"
+              className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-8 w-full max-w-[520px] max-h-[90vh] overflow-y-auto relative"
               onClick={e => e.stopPropagation()}>
               <button onClick={() => setViewOrder(null)} className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text)]"><X size={20}/></button>
               <h3 className="font-[Playfair_Display] text-xl font-bold text-[var(--text)] mb-1">Order Details</h3>
-              <div className="font-mono text-[13px] text-[var(--gold)] mb-6">{viewOrder.ref}</div>
-              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="font-mono text-[13px] text-[var(--gold)]">{viewOrder.ref}</span>
+                {viewOrder.publicToken && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${STOREFRONT_URL}/order/${viewOrder.publicToken}`);
+                      showToast('✓ Public order link copied');
+                    }}
+                    title="Copy the customer-facing order link"
+                    className="flex items-center gap-1 text-[11px] text-[var(--text-ghost)] hover:text-[var(--gold-light)] border border-[var(--border)] hover:border-[var(--gold-dim)] rounded px-2 py-1 transition-all"
+                  >
+                    <Link2 size={11}/> Copy link
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
                 {[['Customer', viewOrder.customer?.name],['Phone', viewOrder.customer?.phone],['Email', viewOrder.customer?.email],['Delivery', viewOrder.delivery]].map(([k,v]) => (
                   <div key={k}>
                     <span className="text-[10px] tracking-wider uppercase text-[var(--gold)] block mb-1">{k}</span>
@@ -1039,7 +1131,7 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {viewOrder.customer?.address && (
-                  <div className="col-span-2">
+                  <div className="col-span-1 sm:col-span-2">
                     <span className="text-[10px] tracking-wider uppercase text-[var(--gold)] block mb-1">Address</span>
                     <span className="text-[var(--text-dim)]">{viewOrder.customer.address}{viewOrder.customer.state ? `, ${viewOrder.customer.state}` : ''}</span>
                   </div>
@@ -1052,7 +1144,7 @@ export default function AdminPage() {
                   const price = item.qty >= (p.bulkMin || Infinity) ? p.bulkPrice : p.price;
                   return (
                     <div key={i} className="flex items-center gap-3 py-2 border-b border-[var(--border)] last:border-0">
-                      <div className="w-10 h-10 rounded-md flex-shrink-0" style={{ background: p.pattern }}/>
+                      <ProductThumb product={p} className="w-10 h-10 rounded-md"/>
                       <div className="flex-1 text-sm">
                         <div className="font-semibold text-[var(--text)]">{p.name}</div>
                         <div className="text-[var(--text-muted)] text-xs">{item.qty} × {p.unit}</div>
