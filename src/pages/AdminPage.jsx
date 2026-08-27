@@ -6,13 +6,16 @@ import {
   ExternalLink, Edit, Trash2, Check, X, Package, Users,
   DollarSign, Globe, Type, Image, MessageSquare, Phone,
   Megaphone, AlignLeft, Search, ChevronDown, ChevronUp,
-  RotateCcw, Eye, Save, Menu, PanelLeftClose, PanelLeftOpen, Copy, Link2
+  RotateCcw, Eye, Save, Menu, PanelLeftClose, PanelLeftOpen, Copy, Link2,
+  Bell, BellOff, BellRing
 } from 'lucide-react';
 import { productsApi, ordersApi, settingsApi, authApi, resolveImageUrl } from '../api/index';
 import { formatPrice, CATEGORIES, DEFAULT_SITE_CONTENT } from '../data/siteDefaults';
 import ThemeToggle from '../components/ui/ThemeToggle';
 import ImageUpload from '../components/ui/ImageUpload';
 import ProductThumb from '../components/ui/ProductThumb';
+import { useOrderNotifications } from '../hooks/useOrderNotifications';
+import { isNotificationSupported, getNotificationPermission, requestNotificationPermission, fireOrderNotification } from '../lib/notify';
 
 const PRODUCT_CATEGORIES = CATEGORIES.filter(c => c.value !== 'all');
 
@@ -166,6 +169,8 @@ export default function AdminPage() {
   const [footerForm,      setFooterForm]      = useState(siteContent.footer);
   const [seoForm,         setSeoForm]         = useState(siteContent.seo);
   const [fabricCards,     setFabricCards]     = useState(siteContent.hero.fabricCards);
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
+  const [notifEnabled, setNotifEnabled] = useState(() => localStorage.getItem('lumng_admin_notif_enabled') === '1');
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
   const saved = (section) => { showToast(`✓ ${section} saved`); };
@@ -185,6 +190,35 @@ export default function AdminPage() {
       setOrders((data.orders || []).map(normalizeOrder));
     } catch (err) { failed('Loading orders', err); }
   }, []);
+
+  const requestNotifPermission = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === 'granted') {
+      setNotifEnabled(true);
+      localStorage.setItem('lumng_admin_notif_enabled', '1');
+      showToast('✓ Order notifications enabled');
+    } else if (perm === 'denied') {
+      showToast('⚠ Notifications blocked — enable them in your browser\'s site settings');
+    }
+  };
+
+  const toggleNotifEnabled = () => {
+    setNotifEnabled(v => {
+      const next = !v;
+      localStorage.setItem('lumng_admin_notif_enabled', next ? '1' : '0');
+      return next;
+    });
+  };
+
+  useOrderNotifications({
+    enabled: notifEnabled && notifPermission === 'granted',
+    onNewOrder: (order) => {
+      fireOrderNotification(order);
+      showToast(`🛎️ New order — ${order.custName || 'a customer'} · ${formatPrice(order.total)}`);
+      fetchOrders(); // keep the dashboard/orders list current without a manual refresh
+    },
+  });
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -346,7 +380,16 @@ export default function AdminPage() {
           <img src="/logo.jpeg" alt="LUM NG" className="w-6 h-6 rounded-full object-cover border border-[var(--gold-dim)]" />
           <span className="font-[Playfair_Display] text-sm font-black tracking-widest text-[var(--text)]">LUM NG</span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setPage('settings'); }}
+            title={notifEnabled && notifPermission === 'granted' ? 'Order notifications on' : 'Order notifications off'}
+            className={`p-1.5 rounded ${notifEnabled && notifPermission === 'granted' ? 'text-[var(--gold)]' : 'text-[var(--text-ghost)]'}`}
+          >
+            {notifEnabled && notifPermission === 'granted' ? <BellRing size={18}/> : <BellOff size={18}/>}
+          </button>
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* ── Mobile backdrop ── */}
@@ -437,10 +480,20 @@ export default function AdminPage() {
           </a>
         </nav>
 
-        {/* Theme toggle — desktop only (mobile has it in the topbar) */}
-        <div className={`px-6 py-3 border-t border-[var(--border)] hidden lg:flex items-center ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}>
-          {!sidebarCollapsed && <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Theme</span>}
-          <ThemeToggle />
+        {/* Theme + notifications — desktop only (mobile has these in the topbar) */}
+        <div className={`px-6 py-3 border-t border-[var(--border)] hidden lg:flex flex-col gap-2.5 ${sidebarCollapsed ? 'lg:px-0 lg:items-center' : ''}`}>
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+            {!sidebarCollapsed && <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)]">Theme</span>}
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={() => setPage('settings')}
+            title="Order notifications — set up in Settings"
+            className={`flex items-center gap-2 text-[11px] uppercase tracking-wider transition-colors ${sidebarCollapsed ? 'justify-center' : 'justify-between'} ${notifEnabled && notifPermission === 'granted' ? 'text-[var(--gold)]' : 'text-[var(--text-ghost)] hover:text-[var(--text-muted)]'}`}
+          >
+            {!sidebarCollapsed && <span>Order Alerts</span>}
+            {notifEnabled && notifPermission === 'granted' ? <BellRing size={14}/> : <BellOff size={14}/>}
+          </button>
         </div>
 
         <div className={`px-6 py-5 border-t border-[var(--border)] ${sidebarCollapsed ? 'lg:px-3' : ''}`}>
@@ -1062,6 +1115,53 @@ export default function AdminPage() {
         {page === 'settings' && (
           <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }}>
             <h1 className="font-[Playfair_Display] text-3xl font-bold text-[var(--text)] mb-8">Settings</h1>
+
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-8 max-w-2xl mb-6">
+              <div className="flex items-center gap-2.5 mb-2">
+                <Bell size={18} className="text-[var(--gold)]"/>
+                <h2 className="font-semibold text-[var(--text)]">Order Notifications</h2>
+              </div>
+              <p className="text-[13px] text-[var(--text-muted)] mb-5 leading-relaxed">
+                Get a browser notification the moment a new order comes in — a stand-in for now while full email
+                notifications are still being finished. Works as long as this dashboard is open in a browser tab
+                (it doesn't need to be the active tab, but the browser needs to be running).
+              </p>
+
+              {!isNotificationSupported() ? (
+                <div className="text-[13px] text-[var(--text-ghost)] bg-[var(--input-bg)] border border-[var(--border)] rounded px-4 py-3">
+                  Your browser doesn't support notifications.
+                </div>
+              ) : notifPermission === 'denied' ? (
+                <div className="text-[13px] text-[var(--danger)] bg-[rgba(232,92,92,0.1)] border border-[rgba(232,92,92,0.2)] rounded px-4 py-3">
+                  Notifications are blocked for this site. Enable them from your browser's site settings (usually the padlock icon next to the address bar), then reload this page.
+                </div>
+              ) : notifPermission === 'granted' ? (
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-2 text-[13px] text-[var(--text-dim)]">
+                    <BellRing size={16} className="text-[var(--gold)]"/>
+                    {notifEnabled ? 'Notifications are on' : 'Permission granted, but notifications are paused'}
+                  </div>
+                  <button
+                    onClick={toggleNotifEnabled}
+                    className={`text-[12px] uppercase tracking-wider px-5 py-2.5 rounded font-semibold transition-all ${
+                      notifEnabled
+                        ? 'border border-[var(--border)] text-[var(--text-muted)] hover:border-red-400/30 hover:text-red-400/80'
+                        : 'bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] text-[var(--bg)] hover:-translate-y-0.5'
+                    }`}
+                  >
+                    {notifEnabled ? 'Turn Off' : 'Turn On'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={requestNotifPermission}
+                  className="bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] text-[var(--bg)] font-bold uppercase tracking-wider text-[13px] px-6 py-2.5 rounded hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                >
+                  <Bell size={14}/> Enable Order Notifications
+                </button>
+              )}
+            </div>
+
             <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-8 max-w-2xl mb-6">
               <h2 className="font-semibold text-[var(--text)] mb-5">Admin Credentials</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
