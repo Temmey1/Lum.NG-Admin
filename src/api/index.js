@@ -59,6 +59,7 @@ export const authApi = {
 export const productsApi = {
   getAll: (params) => api.get("/products", { params }),
   getOne: (id) => api.get(`/products/${id}`),
+  getCategories: () => api.get("/products/categories"),
   create: (data) => api.post("/products", data),
   update: (id, data) => api.put(`/products/${id}`, data),
   delete: (id) => api.delete(`/products/${id}`),
