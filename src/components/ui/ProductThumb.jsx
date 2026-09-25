@@ -2,7 +2,7 @@ import React from 'react';
 import { resolveImageUrl } from '../../api/index';
 
 export default function ProductThumb({ product, className = 'w-9 h-9 rounded-md' }) {
-  const src = resolveImageUrl(product?.imageUrl);
+  const src = resolveImageUrl(product?.images?.[0] || product?.imageUrl);
   if (src) {
     return (
       <img

@@ -51,7 +51,7 @@ import {
   DEFAULT_SITE_CONTENT,
 } from "../data/siteDefaults";
 import ThemeToggle from "../components/ui/ThemeToggle";
-import ImageUpload from "../components/ui/ImageUpload";
+import MultiImageUpload from "../components/ui/MultiImageUpload";
 import ProductThumb from "../components/ui/ProductThumb";
 import { useOrderNotifications } from "../hooks/useOrderNotifications";
 import {
@@ -135,7 +135,7 @@ const BLANK_PRODUCT = {
   minOrder: 1,
   tags: "",
   pattern: "linear-gradient(135deg,#1a1a1a,#333)",
-  imageUrl: null,
+  images: [],
   inStock: true,
   featured: false,
 };
@@ -317,10 +317,15 @@ function CategoryCombobox({ value, options, onChange }) {
             }
           }}
           onBlur={() => {
-            setTimeout(() => {
-              setOpen(false);
-              commitFromInput();
-            }, 120);
+            // Synchronous now — no setTimeout. That delay used to exist to
+            // give a dropdown-option click time to register before the list
+            // closed, but it also meant clicking Save right after typing a
+            // category read the OLD (pre-commit) form.category, since Save's
+            // onClick ran well before the 120ms delay elapsed. Dropdown
+            // option clicks are now protected a different way (see the <li>
+            // onMouseDown below), so this can commit immediately.
+            commitFromInput();
+            setOpen(false);
           }}
           placeholder="Type to search or add new category…"
           className={inputCls + " pr-9"}
@@ -343,6 +348,7 @@ function CategoryCombobox({ value, options, onChange }) {
               <li
                 key={opt.value + (isNew ? "__new" : "")}
                 onMouseEnter={() => setActiveIdx(i)}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   const matchingOption = options.find(
                     (o) => o.value === opt.value,
@@ -679,6 +685,7 @@ export default function AdminPage() {
     setForm({
       ...p,
       tags: Array.isArray(p.tags) ? p.tags.join(", ") : p.tags || "",
+      images: p.images?.length ? p.images : (p.imageUrl ? [p.imageUrl] : []),
     });
     setEditId(p.id);
     setPage("add");
@@ -1130,7 +1137,11 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {orders.slice(0, 5).map((o) => (
-                        <tr key={o.ref} className="hover:bg-[var(--input-bg)]">
+                        <tr
+                          key={o.ref}
+                          onClick={() => setViewOrder(o)}
+                          className="hover:bg-[var(--input-bg)] cursor-pointer"
+                        >
                           <td className="px-4 py-3 font-mono text-[12px] text-[var(--gold)]">
                             {o.ref}
                           </td>
@@ -1310,10 +1321,10 @@ export default function AdminPage() {
             </h1>
             <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-5 sm:p-8">
               <div className="grid grid-cols-1 gap-5 max-w-2xl">
-                <ImageUpload
-                  value={form.imageUrl}
-                  onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
-                  label="Product Image (shown on the storefront if set)"
+                <MultiImageUpload
+                  value={form.images}
+                  onChange={(images) => setForm((f) => ({ ...f, images }))}
+                  label="Product Images (shown on the storefront if set)"
                 />
                 <FieldRow>
                   <Field label="Product Name *">
@@ -1415,7 +1426,7 @@ export default function AdminPage() {
                     placeholder="linear-gradient(135deg, #color1, #color2)"
                     className={inputCls + " resize-y font-mono text-[12px]"}
                   />
-                  {!form.imageUrl && (
+                  {!form.images?.length && (
                     <div
                       className="h-16 rounded-lg border border-[var(--border)] mt-2 transition-all"
                       style={{ background: form.pattern }}
@@ -1525,7 +1536,8 @@ export default function AdminPage() {
                     {orders.map((o) => (
                       <tr
                         key={o.ref}
-                        className="hover:bg-[var(--input-bg)] border-b border-[var(--border)] last:border-0"
+                        onClick={() => setViewOrder(o)}
+                        className="hover:bg-[var(--input-bg)] border-b border-[var(--border)] last:border-0 cursor-pointer"
                       >
                         <td className="px-4 py-3 font-mono text-[12px] text-[var(--gold)]">
                           {o.ref}
@@ -1549,7 +1561,7 @@ export default function AdminPage() {
                             ? new Date(o.date).toLocaleDateString("en-NG")
                             : "—"}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <select
                             value={o.status}
                             onChange={(e) =>
@@ -1568,7 +1580,7 @@ export default function AdminPage() {
                             ))}
                           </select>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setViewOrder(o)}
                             className="w-8 h-8 border border-[var(--border)] rounded flex items-center justify-center text-[var(--text-muted)] hover:border-[var(--gold-dim)] hover:text-[var(--gold-light)] transition-all"
