@@ -10,7 +10,7 @@ import { uploadApi, resolveImageUrl } from '../../api/index';
  * cards, order rows, etc.) — so images can be reordered to change which
  * one is primary.
  */
-export default function MultiImageUpload({ value, onChange, label = 'Product Images', max = 8 }) {
+export default function MultiImageUpload({ value, onChange, label = 'Product Images', max = 40 }) {
   const images = Array.isArray(value) ? value : [];
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -65,7 +65,7 @@ export default function MultiImageUpload({ value, onChange, label = 'Product Ima
           const src = resolveImageUrl(url);
           return (
             <div key={url + idx} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--input-bg)] group">
-              {src && <img src={src} alt="" className="w-full h-full object-cover" />}
+              {src && <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />}
               {idx === 0 && (
                 <div className="absolute top-1.5 left-1.5 bg-[var(--gold)] text-[var(--bg)] text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded flex items-center gap-1">
                   <Star size={9} fill="currentColor" /> Main
