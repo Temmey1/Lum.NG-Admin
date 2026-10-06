@@ -1,8 +1,11 @@
 import React from 'react';
 import { resolveImageUrl } from '../../api/index';
 
-export default function ProductThumb({ product, className = 'w-9 h-9 rounded-md' }) {
-  const src = resolveImageUrl(product?.images?.[0] || product?.imageUrl);
+// `overrideUrl`: shows this specific image instead of the product's default
+// — used for order line items where the customer selected a particular
+// gallery photo on the storefront (OrderItem.selectedImage).
+export default function ProductThumb({ product, overrideUrl = null, className = 'w-9 h-9 rounded-md' }) {
+  const src = resolveImageUrl(overrideUrl || product?.images?.[0] || product?.imageUrl);
   if (src) {
     return (
       <img

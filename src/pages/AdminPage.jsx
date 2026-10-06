@@ -89,7 +89,14 @@ function normalizeOrder(o) {
     total: o.total,
     status: (o.status || "").toLowerCase(),
     date: o.createdAt,
-    items: (o.items || []).map((i) => ({ id: i.productId, qty: i.qty })),
+    items: (o.items || []).map((i) => ({
+      id: i.productId,
+      qty: i.qty,
+      // The specific fabric photo the customer picked for this line item
+      // (from the storefront gallery), if any — falls back to the
+      // product's own default image when the order predates this feature.
+      selectedImage: i.selectedImage || null,
+    })),
   };
 }
 
@@ -2617,6 +2624,7 @@ export default function AdminPage() {
                     >
                       <ProductThumb
                         product={p}
+                        overrideUrl={item.selectedImage}
                         className="w-10 h-10 rounded-md"
                       />
                       <div className="flex-1 text-sm">
@@ -2625,6 +2633,11 @@ export default function AdminPage() {
                         </div>
                         <div className="text-[var(--text-muted)] text-xs">
                           {item.qty} × {p.unit}
+                          {item.selectedImage && (
+                            <span className="ml-1.5 text-[var(--gold)]" title="Customer selected a specific photo for this item">
+                              · chosen photo
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-[var(--gold-light)] font-semibold">

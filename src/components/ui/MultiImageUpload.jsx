@@ -10,7 +10,7 @@ import { uploadApi, resolveImageUrl } from '../../api/index';
  * cards, order rows, etc.) — so images can be reordered to change which
  * one is primary.
  */
-export default function MultiImageUpload({ value, onChange, label = 'Product Images', max = 40 }) {
+export default function MultiImageUpload({ value, onChange, label = 'Product Images', max = 100 }) {
   const images = Array.isArray(value) ? value : [];
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
